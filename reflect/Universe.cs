@@ -141,6 +141,43 @@ namespace IKVM.Reflection
 
 	public sealed class Universe : IDisposable
 	{
+#if NETFRAMEWORK
+		public static readonly string CoreLibName = "mscorlib";
+#else
+		public static readonly string CoreLibName = "netstandard";
+
+		public static string ReferenceAssembliesDirectory
+		{
+			get
+			{
+				return BuildRefDirFrom(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory());
+			}
+		}
+
+		private static string BuildRefDirFrom(string runtimeDir)
+		{
+			// transform a thing like
+			// C:\Program Files\dotnet\shared\Microsoft.NETCore.App\3.1.7
+			// to
+			// C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1
+
+			var parts = runtimeDir.Split(Path.DirectorySeparatorChar);
+			var n = string.IsNullOrEmpty(parts[parts.Length - 1]) ? parts.Length - 2 : parts.Length - 1;
+			var versionDir = parts[n--];
+			var frameworkDir = parts[n--];
+			var newParts = new string[n + 5];
+			Array.Copy(parts, newParts, n);
+			var suffixParts = new string[] {"packs", frameworkDir + ".Ref", "3.1.0", "ref", "netcoreapp3.1"};
+			Array.Copy(suffixParts, 0, newParts, n, suffixParts.Length);
+			var dir = Path.Combine(newParts);
+			if (!Directory.Exists(dir))
+			{
+				throw new FileNotFoundException("Reference assemblies directory: " + dir);
+			}
+			return dir;
+		}
+#endif
+
 		internal static readonly bool MonoRuntime = System.Type.GetType("Mono.Runtime") != null;
 		private readonly Dictionary<Type, Type> canonicalizedTypes = new Dictionary<Type, Type>();
 		private readonly List<AssemblyReader> assemblies = new List<AssemblyReader>();
@@ -244,7 +281,7 @@ namespace IKVM.Reflection
 
 		internal Assembly Mscorlib
 		{
-			get { return Load("mscorlib"); }
+			get { return Load(CoreLibName); }
 		}
 
 		private Type ImportMscorlibType(string ns, string name)
@@ -525,7 +562,7 @@ namespace IKVM.Reflection
 
 		internal bool HasMscorlib
 		{
-			get { return GetLoadedAssembly("mscorlib") != null; }
+			get { return GetLoadedAssembly(CoreLibName) != null; }
 		}
 
 		public event ResolveEventHandler AssemblyResolve
@@ -807,8 +844,7 @@ namespace IKVM.Reflection
 				return asm;
 			}
 #if NETSTANDARD
-			string dir = Path.GetDirectoryName(TypeUtil.GetAssembly(typeof(object)).ManifestModule.FullyQualifiedName);
-			string filepath = Path.Combine(dir, GetSimpleAssemblyName(refname) + ".dll");
+			string filepath = Path.Combine(ReferenceAssembliesDirectory, GetSimpleAssemblyName(refname) + ".dll");
 			if (File.Exists(filepath))
 			{
 				using (RawModule module = OpenRawModule(filepath))
@@ -1023,7 +1059,7 @@ namespace IKVM.Reflection
 		internal void RegisterDynamicAssembly(AssemblyBuilder asm)
 		{
 			dynamicAssemblies.Add(asm);
- 		}
+		}
 
 		internal void RenameAssembly(Assembly assembly, AssemblyName oldName)
 		{

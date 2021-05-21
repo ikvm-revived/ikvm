@@ -358,7 +358,9 @@ namespace IKVM.Internal
 			{
 				// to avoid having to load (and find) System.dll, we construct a symbolic CustomAttributeBuilder
 				AssemblyName name = Types.Object.Assembly.GetName();
+#if NETFRAMEWORK
 				name.Name = "System";
+#endif
 				Universe u = StaticCompiler.Universe;
 				Type typeofEditorBrowsableAttribute = u.ResolveType(Types.Object.Assembly, "System.ComponentModel.EditorBrowsableAttribute, " + name.FullName);
 				Type typeofEditorBrowsableState = u.ResolveType(Types.Object.Assembly, "System.ComponentModel.EditorBrowsableState, " + name.FullName);
@@ -2001,7 +2003,7 @@ namespace IKVM.Internal
 		{
 			Profiler.Count("TypeWrapper");
 			// class name should be dotted or null for primitives
-			Debug.Assert(name == null || name.IndexOf('/') < 0);
+			Debug.Assert(name == null || name.IndexOf('/') < 0, name);
 
 			this.flags = flags;
 			this.modifiers = modifiers;
@@ -2067,7 +2069,10 @@ namespace IKVM.Internal
 		{
 			// these are the types that may not be used as a type argument when instantiating a generic type
 			return type == Types.Void
+				// ArgIterator does not exist in netstandard
+#if NETFRAMEWORK
 				|| type == JVM.Import(typeof(ArgIterator))
+#endif
 				|| type == JVM.Import(typeof(RuntimeArgumentHandle))
 				|| type == JVM.Import(typeof(TypedReference))
 				|| type.ContainsGenericParameters

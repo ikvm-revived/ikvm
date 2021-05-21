@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
-    <OutputPath>..\..\bin\$(Configuration)</OutputPath>
+    <TargetFrameworks>net461;netcoreapp3.1</TargetFrameworks>
     <DefineConstants>$(DefineConstants);FIRST_PASS</DefineConstants>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <NoWarn>$(NoWarn);672;612</NoWarn>
+    <OutputPath>..\..\bin\$(Configuration)</OutputPath>
   </PropertyGroup>
 
   <PropertyGroup Label="NuGet Package/Assembly Settings">
@@ -15,12 +15,16 @@
     <Description>Winforms peers and 'native' code</Description>
   </PropertyGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
+  <ItemGroup Condition="$(TargetFramework.StartsWith('netstandard')) Or $(TargetFramework.StartsWith('netcore'))">
+    <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
@@ -31,7 +35,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="IKVM.OpenJDK.SwingAWT" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>IKVM.OpenJDK.SwingAWT</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <Target Name="AddAllowPartiallyTrustedCallers" BeforeTargets="Build">

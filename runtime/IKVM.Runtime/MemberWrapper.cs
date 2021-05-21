@@ -782,7 +782,18 @@ namespace IKVM.Internal
 			MethodBuilder mb = method as MethodBuilder;
 			if (mb != null)
 			{
+#if NETFRAMEWORK
 				method = mb.Module.ResolveMethod(mb.GetToken().Token);
+#else
+				BindingFlags flags = BindingFlags.DeclaredOnly;
+				flags |= mb.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic;
+				flags |= mb.IsStatic ? BindingFlags.Static : BindingFlags.Instance;
+				method = DeclaringType.TypeAsTBD.GetMethod(mb.Name, flags, null, GetParametersForDefineMethod(), null);
+				if (method == null)
+				{
+					method = DeclaringType.TypeAsTBD.GetConstructor(flags, null, GetParametersForDefineMethod(), null);
+				}
+#endif
 			}
 #endif
 		}
@@ -1552,7 +1563,14 @@ namespace IKVM.Internal
 			FieldBuilder fb = field as FieldBuilder;
 			if(fb != null)
 			{
+#if NETFRAMEWORK
 				field = fb.Module.ResolveField(fb.GetToken().Token);
+#else
+				BindingFlags flags = BindingFlags.DeclaredOnly;
+				flags |= fb.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic;
+				flags |= fb.IsStatic ? BindingFlags.Static : BindingFlags.Instance;
+				field = DeclaringType.TypeAsTBD.GetField(fb.Name, flags);
+#endif
 			}
 		}
 

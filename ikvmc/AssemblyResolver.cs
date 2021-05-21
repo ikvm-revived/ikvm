@@ -62,13 +62,18 @@ namespace IKVM.Internal
 		internal void Init(Universe universe, bool nostdlib, IList<string> references, IList<string> userLibPaths)
 		{
 			this.universe = universe;
+
 			// like the C# compiler, the references are loaded from:
 			// current directory, CLR directory, -lib: option, %LIB% environment
 			// (note that, unlike the C# compiler, we don't add the CLR directory if -nostdlib has been specified)
 			libpath.Add(Environment.CurrentDirectory);
 			if (!nostdlib)
 			{
+#if NETFRAMEWORK
 				libpath.Add(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory());
+#else
+				libpath.Add(Universe.ReferenceAssembliesDirectory);
+#endif
 			}
 			foreach (string str in userLibPaths)
 			{
@@ -81,7 +86,7 @@ namespace IKVM.Internal
 			}
 			else
 			{
-				mscorlibVersion = universe.Load("mscorlib").GetName().Version;
+				mscorlibVersion = universe.Load(Universe.CoreLibName).GetName().Version;
 			}
 #if STATIC_COMPILER
 			universe.AssemblyResolve += AssemblyResolve;
@@ -102,7 +107,7 @@ namespace IKVM.Internal
 						// to avoid problems (i.e. weird exceptions), we don't allow assemblies to load that reference a newer version of mscorlib
 						foreach (AssemblyName asmref in module.GetReferencedAssemblies())
 						{
-							if (asmref.Name == "mscorlib" && asmref.Version > mscorlibVersion)
+							if (asmref.Name == Universe.CoreLibName && asmref.Version > mscorlibVersion)
 							{
 								Console.Error.WriteLine("Error: unable to load assembly '{0}' as it depends on a higher version of mscorlib than the one currently loaded", path);
 								Environment.Exit(1);
@@ -261,7 +266,9 @@ namespace IKVM.Internal
 			{
 				if (previousMatchLevel == 2)
 				{
+#if NETFRAMEWORK
 					EmitWarning(WarningId.HigherVersion, "assuming assembly reference \"{0}\" matches \"{1}\", you may need to supply runtime policy", previousMatch.FullName, name.FullName);
+#endif
 					return universe.Load(previousMatch.FullName);
 				}
 				else if (args.RequestingAssembly != null)
@@ -423,7 +430,7 @@ namespace IKVM.Internal
 				{
 					try
 					{
-						if (AssemblyName.GetAssemblyName(r).Name == "mscorlib")
+						if (AssemblyName.GetAssemblyName(r).Name == Universe.CoreLibName)
 						{
 							return LoadFile(r);
 						}
@@ -433,7 +440,7 @@ namespace IKVM.Internal
 					}
 				}
 			}
-			foreach (string mscorlib in FindAssemblyPath("mscorlib.dll"))
+			foreach (string mscorlib in FindAssemblyPath(Universe.CoreLibName + ".dll"))
 			{
 				return LoadFile(mscorlib);
 			}
